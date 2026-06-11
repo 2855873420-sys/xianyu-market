@@ -1,10 +1,12 @@
 ﻿// ===== 全局状态 =====
 let currentCategory = "all";
 let cart = [];
+let paidProducts = {}; // 已付款商品ID集合
 
 // ===== 初始化 =====
 document.addEventListener("DOMContentLoaded", () => {
     loadCart();
+    loadPaidProducts();
     PRODUCTS = loadProducts();
     nextId = getNextId(PRODUCTS);
     renderProducts(PRODUCTS);
@@ -152,7 +154,56 @@ function closeDetail() {
 function contactSeller(id) {
     const product = findProduct(id);
     if (!product) return;
-    alert("联系卖家: " + product.seller + "\n联系方式: " + product.contact);
+
+    // 已付款直接显示
+    if (paidProducts[id]) {
+        alert("卖家: " + product.seller + "\n联系方式: " + product.contact);
+        return;
+    }
+
+    // 打开付款弹窗
+    currentPayProduct = product;
+    document.getElementById("payImage").textContent = product.image;
+    document.getElementById("payImage").style.background = getGradient(product.id);
+    document.getElementById("payTitle").textContent = product.title;
+    document.getElementById("payPrice").innerHTML = '<span class="unit">¥</span>' + product.price.toLocaleString();
+    document.getElementById("payStep1").style.display = "block";
+    document.getElementById("payStep2").style.display = "none";
+    document.getElementById("payModal").classList.add("active");
+    document.body.style.overflow = "hidden";
+    closeDetail();
+}
+
+let currentPayProduct = null;
+
+function loadPaidProducts() {
+    try {
+        const saved = localStorage.getItem("xianyu_paid");
+        if (saved) paidProducts = JSON.parse(saved);
+    } catch (e) { paidProducts = {}; }
+}
+
+function savePaidProducts() {
+    localStorage.setItem("xianyu_paid", JSON.stringify(paidProducts));
+}
+
+function confirmPayment() {
+    if (!currentPayProduct) return;
+    const product = currentPayProduct;
+
+    paidProducts[product.id] = true;
+    savePaidProducts();
+
+    document.getElementById("payStep1").style.display = "none";
+    document.getElementById("payStep2").style.display = "block";
+    document.getElementById("paySeller").textContent = product.seller;
+    document.getElementById("payContact").textContent = product.contact;
+}
+
+function closePayModal() {
+    document.getElementById("payModal").classList.remove("active");
+    document.body.style.overflow = "";
+    currentPayProduct = null;
 }
 
 // ===== 发布商品 =====

@@ -1058,3 +1058,140 @@ body {
 }
 
 .btn-clear-all:hover { background: #c0392b; }
+
+/* ===== 付款弹窗 ===== */
+.pay-modal { max-width: 420px; text-align: center; }
+
+.pay-icon { font-size: 48px; margin-bottom: 10px; }
+
+.pay-modal h2 {
+    font-size: 20px;
+    margin-bottom: 20px;
+    color: #2d3436;
+}
+
+.pay-product-info {
+    background: #f5f6fa;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.pay-product-image {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 10px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.pay-product-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.pay-product-price {
+    font-size: 22px;
+    font-weight: 700;
+    color: #ff6b35;
+}
+
+.pay-methods {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.pay-method {
+    flex: 1;
+    padding: 14px;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.pay-method.active { border-color: #667eea; background: #667eea10; }
+
+.pay-method input { display: none; }
+
+.btn-pay-confirm {
+    width: 100%;
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-pay-confirm:hover { background: #5a6fd6; }
+
+.pay-hint {
+    font-size: 12px;
+    color: #b2bec3;
+    margin-top: 10px;
+}
+
+/* 支付成功 */
+.pay-success-icon { font-size: 56px; margin-bottom: 10px; }
+
+.pay-success-title {
+    color: #00b894;
+    margin-bottom: 20px !important;
+}
+
+.pay-contact-reveal {
+    background: #f0fff4;
+    border: 1px solid #00b89430;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+.contact-label {
+    font-size: 12px;
+    color: #636e72;
+    margin-bottom: 4px;
+}
+
+.contact-value {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 12px;
+}
+
+.contact-highlight {
+    font-size: 20px;
+    color: #00b894;
+}
+
+.pay-contact-hint {
+    font-size: 13px;
+    color: #636e72;
+    margin-bottom: 16px;
+}
+
+.btn-pay-done {
+    width: 100%;
+    background: #00b894;
+    color: white;
+    border: none;
+    padding: 14px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+}
