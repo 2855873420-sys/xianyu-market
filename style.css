@@ -1044,3 +1044,17 @@ body {
     .btn-add-product { margin-left: 0; }
     .td-title { max-width: 120px; }
 }
+
+.btn-clear-all {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-clear-all:hover { background: #c0392b; }

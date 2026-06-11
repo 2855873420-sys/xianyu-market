@@ -198,6 +198,15 @@ function saveAdminProduct(event) {
 }
 
 // 删除商品
+function clearAllProducts() {
+    if (!confirm('确定要删除所有商品吗？此操作不可恢复！')) return;
+    localStorage.removeItem('xianyu_products');
+    refreshProducts();
+    renderAdminTable();
+    updateStats();
+    showToast('已清空所有商品 🗑️');
+}
+
 function deleteProduct(id) {
     if (!confirm('确定要删除这个商品吗？此操作不可恢复。')) return;
 
