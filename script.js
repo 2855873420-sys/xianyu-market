@@ -1,391 +1,236 @@
-// ===== 全局状态 =====
-let currentCategory = "all";
+// ===== 闲鱼风格交互逻辑 =====
+let currentCategory = 'all';
+let currentSort = 'default';
+let currentDetailId = null;
 let cart = [];
 let paidProducts = {};
 
-// ===== 初始化 =====
-document.addEventListener("DOMContentLoaded", async () => {
+document.addEventListener('DOMContentLoaded', async () => {
     await initData();
     loadCart();
     loadPaidProducts();
     renderProducts(PRODUCTS);
-    updateCartUI();
+    updateCartDot();
 });
 
-// ===== 购物车持久化 =====
-function loadCart() {
-    try {
-        const saved = localStorage.getItem("xianyu_cart");
-        if (saved) cart = JSON.parse(saved);
-    } catch (e) { cart = []; }
+// ===== 页面切换 =====
+function switchTab(tabId, el) {
+    document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById(tabId).style.display = 'block';
+    if (el) el.classList.add('active');
+    if (tabId === 'tabProfile') updateProfile();
 }
 
-function saveCart() {
-    localStorage.setItem("xianyu_cart", JSON.stringify(cart));
+// ===== 搜索 =====
+function focusSearch() {
+    document.getElementById('searchInput').focus();
 }
 
-// ===== 渲染商品列表 =====
+// ===== 渲染商品 =====
 function renderProducts(products) {
-    const grid = document.getElementById("productGrid");
-    const empty = document.getElementById("emptyState");
-    const resultCount = document.getElementById("resultCount");
-
+    const grid = document.getElementById('productGrid');
+    const empty = document.getElementById('emptyState');
+    if (!grid) return;
     if (!products || products.length === 0) {
-        grid.innerHTML = "";
-        empty.style.display = "block";
-        resultCount.textContent = "0 件商品";
+        grid.innerHTML = '';
+        empty.style.display = 'block';
         return;
     }
-
-    empty.style.display = "none";
-    resultCount.textContent = "共 " + products.length + " 件商品";
-
+    empty.style.display = 'none';
     grid.innerHTML = products.map(p => `
         <div class="product-card" onclick="openDetail(${p.id})">
-            <div class="product-image" style="background: ${getGradient(p.id)}">
+            <div class="product-image" style="background:${getGradient(p.id)}">
                 ${p.image}
-                <span class="product-condition">${p.condition}</span>
+                <span class="condition-tag">${p.condition}</span>
             </div>
-            <div class="product-info">
-                <div class="product-title">${escapeHtml(p.title)}</div>
-                <div class="product-price"><span class="unit">¥</span>${p.price.toLocaleString()}</div>
-                <div class="product-meta">
-                    <span>${p.category}</span>
-                    <span class="product-seller">${escapeHtml(p.seller)}</span>
+            <div class="product-body">
+                <div class="product-title">${esc(p.title)}</div>
+                <div class="product-price"><span class="yuan">¥</span>${p.price.toLocaleString()}</div>
+                <div class="product-foot">
+                    <span class="product-loc">${p.seller}</span>
+                    <span>${p.date.slice(5)}</span>
                 </div>
             </div>
         </div>
-    `).join("");
+    `).join('');
 }
 
 function getGradient(id) {
-    const gradients = [
-        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
-        "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
-        "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
-        "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-        "linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)",
-        "linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)",
-        "linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%)",
-        "linear-gradient(135deg, #f5576c 0%, #ff9a9e 100%)",
-        "linear-gradient(135deg, #667eea 0%, #00f2fe 100%)"
-    ];
-    return gradients[(id - 1) % gradients.length];
+    const g = ['#667eea,#764ba2','#f093fb,#f5576c','#4facfe,#00f2fe','#43e97b,#38f9d7','#fa709a,#fee140','#a18cd1,#fbc2eb','#fccb90,#d57eeb','#e0c3fc,#8ec5fc','#ffecd2,#fcb69f','#667eea,#00f2fe'];
+    return 'linear-gradient(135deg,' + g[(id - 1) % g.length] + ')';
 }
 
-function escapeHtml(str) {
-    const div = document.createElement("div");
-    div.textContent = str;
-    return div.innerHTML;
-}
+function esc(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
-// ===== 筛选与搜索 =====
+// ===== 筛选 =====
 async function filterProducts() {
-    const searchTerm = document.getElementById("searchInput").value.toLowerCase().trim();
-    const sort = document.getElementById("sortSelect").value;
-    const condition = document.getElementById("conditionSelect").value;
-    const priceMin = parseFloat(document.getElementById("priceMin").value) || 0;
-    const priceMax = parseFloat(document.getElementById("priceMax").value) || Infinity;
-
-    if (!dataLoaded) {
-        PRODUCTS = await loadProductsAsync();
-        nextId = getNextId(PRODUCTS);
-        dataLoaded = true;
-    }
-
+    const search = (document.getElementById('searchInput').value || '').toLowerCase().trim();
+    const condition = document.getElementById('conditionSelect').value;
+    if (!dataLoaded) { PRODUCTS = await loadProductsAsync(); nextId = getNextId(PRODUCTS); dataLoaded = true; }
     let filtered = PRODUCTS.filter(p => {
-        if (currentCategory !== "all" && p.category !== currentCategory) return false;
-        if (searchTerm && !p.title.toLowerCase().includes(searchTerm) && !p.desc.toLowerCase().includes(searchTerm)) return false;
-        if (condition !== "all" && p.condition !== condition) return false;
-        if (p.price < priceMin || p.price > priceMax) return false;
+        if (currentCategory !== 'all' && p.category !== currentCategory) return false;
+        if (search && !p.title.toLowerCase().includes(search)) return false;
+        if (condition !== 'all' && p.condition !== condition) return false;
         return true;
     });
-
-    switch (sort) {
-        case "price-asc": filtered.sort((a, b) => a.price - b.price); break;
-        case "price-desc": filtered.sort((a, b) => b.price - a.price); break;
-        case "newest": filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); break;
+    switch (currentSort) {
+        case 'price-asc': filtered.sort((a, b) => a.price - b.price); break;
+        case 'price-desc': filtered.sort((a, b) => b.price - a.price); break;
+        case 'newest': filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); break;
         default: filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
     }
-
     renderProducts(filtered);
 }
 
-function setCategory(category, btn) {
-    currentCategory = category;
-    document.querySelectorAll(".category-btn").forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
+function setCategory(cat, el) {
+    currentCategory = cat;
+    document.querySelectorAll('.cat-item').forEach(c => c.classList.remove('active'));
+    if (el) el.classList.add('active');
+    document.getElementById('searchInput').value = '';
+    filterProducts();
+    switchTab('tabHome', document.querySelector('.nav-item[data-tab="tabHome"]'));
+}
+
+function setSort(sort, el) {
+    currentSort = sort;
+    document.querySelectorAll('.filter-tag').forEach(t => t.classList.remove('active'));
+    el.classList.add('active');
     filterProducts();
 }
 
-// ===== 商品详情 =====
-function findProduct(id) {
-    return PRODUCTS.find(p => p.id === id);
-}
-
+// ===== 详情 =====
 function openDetail(id) {
-    const product = findProduct(id);
-    if (!product) return;
-
-    const body = document.getElementById("detailBody");
-    body.innerHTML = `
-        <div class="detail-image" style="background: ${getGradient(product.id)}">${product.image}</div>
-        <div class="detail-title">${escapeHtml(product.title)}</div>
-        <div class="detail-price">¥${product.price.toLocaleString()}</div>
-        <div class="detail-meta">
-            <span>📂 ${product.category}</span>
-            <span>✨ ${product.condition}</span>
-            <span>👤 ${escapeHtml(product.seller)}</span>
-            <span>📅 ${product.date}</span>
-        </div>
-        <div class="detail-desc">${escapeHtml(product.desc)}</div>
-        <div class="detail-actions">
-            <button class="btn-add-cart" onclick="addToCart(${product.id})">🛒 加入购物车</button>
-            <button class="btn-contact" onclick="contactSeller(${product.id})">💬 联系卖家</button>
-        </div>
-    `;
-    document.getElementById("detailModal").classList.add("active");
-    document.body.style.overflow = "hidden";
+    const p = PRODUCTS.find(x => x.id === id);
+    if (!p) return;
+    currentDetailId = id;
+    document.getElementById('detailImage').style.background = getGradient(p.id);
+    document.getElementById('detailImage').textContent = p.image;
+    document.getElementById('detailPrice').textContent = '¥' + p.price.toLocaleString();
+    document.getElementById('detailTitle').textContent = p.title;
+    document.getElementById('detailTags').innerHTML = ['📂 ' + p.category, '✨ ' + p.condition, '📅 ' + p.date].map(t => '<span>' + t + '</span>').join('');
+    document.getElementById('detailDesc').textContent = p.desc;
+    document.getElementById('detailSeller').textContent = p.seller;
+    document.getElementById('detailContact').textContent = p.contact;
+    document.getElementById('detailModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 
 function closeDetail() {
-    document.getElementById("detailModal").classList.remove("active");
-    document.body.style.overflow = "";
+    document.getElementById('detailModal').classList.remove('active');
+    document.body.style.overflow = '';
 }
 
+// ===== 联系卖家 =====
 function contactSeller(id) {
-    const product = findProduct(id);
-    if (!product) return;
-
+    const p = PRODUCTS.find(x => x.id === id);
+    if (!p) return;
     if (paidProducts[id]) {
-        alert("卖家: " + product.seller + "\n联系方式: " + product.contact);
+        alert('卖家: ' + p.seller + '\n联系方式: ' + p.contact);
         return;
     }
-
-    currentPayProduct = product;
-    document.getElementById("payImage").textContent = product.image;
-    document.getElementById("payImage").style.background = getGradient(product.id);
-    document.getElementById("payTitle").textContent = product.title;
-    document.getElementById("payPrice").innerHTML = '<span class="unit">¥</span>' + product.price.toLocaleString();
-    document.getElementById("payStep1").style.display = "block";
-    document.getElementById("payStep2").style.display = "none";
-    document.getElementById("payModal").classList.add("active");
-    document.body.style.overflow = "hidden";
-    closeDetail();
+    currentPayProduct = p;
+    document.getElementById('payProductInfo').innerHTML = '<div class="pay-price">¥' + p.price.toLocaleString() + '</div><div style="color:#999;font-size:13px">' + esc(p.title) + '</div>';
+    document.getElementById('payStep1').style.display = 'block';
+    document.getElementById('payStep2').style.display = 'none';
+    document.getElementById('payModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
 }
 
 let currentPayProduct = null;
-
-function loadPaidProducts() {
-    try {
-        const saved = localStorage.getItem("xianyu_paid");
-        if (saved) paidProducts = JSON.parse(saved);
-    } catch (e) { paidProducts = {}; }
-}
-
-function savePaidProducts() {
-    localStorage.setItem("xianyu_paid", JSON.stringify(paidProducts));
-}
+function loadPaidProducts() { try { const s = localStorage.getItem('xianyu_paid'); if (s) paidProducts = JSON.parse(s); } catch (e) { paidProducts = {}; } }
+function savePaidProducts() { localStorage.setItem('xianyu_paid', JSON.stringify(paidProducts)); }
 
 function confirmPayment() {
     if (!currentPayProduct) return;
     paidProducts[currentPayProduct.id] = true;
     savePaidProducts();
-    document.getElementById("payStep1").style.display = "none";
-    document.getElementById("payStep2").style.display = "block";
-    document.getElementById("paySeller").textContent = currentPayProduct.seller;
-    document.getElementById("payContact").textContent = currentPayProduct.contact;
+    document.getElementById('payStep1').style.display = 'none';
+    document.getElementById('payStep2').style.display = 'block';
+    document.getElementById('paySeller').textContent = currentPayProduct.seller;
+    document.getElementById('payContact').textContent = currentPayProduct.contact;
 }
 
-function closePayModal() {
-    document.getElementById("payModal").classList.remove("active");
-    document.body.style.overflow = "";
-    currentPayProduct = null;
-}
+function closePayModal() { document.getElementById('payModal').classList.remove('active'); document.body.style.overflow = ''; currentPayProduct = null; }
 
-// ===== 发布商品 =====
-function openSellModal() {
-    document.getElementById("sellModal").classList.add("active");
-    document.body.style.overflow = "hidden";
-}
+// ===== 发布 =====
+function openSellModal() { document.getElementById('sellModal').classList.add('active'); document.body.style.overflow = 'hidden'; }
+function closeSellModal() { document.getElementById('sellModal').classList.remove('active'); document.body.style.overflow = ''; }
 
-function closeSellModal() {
-    document.getElementById("sellModal").classList.remove("active");
-    document.body.style.overflow = "";
-}
-
-async function publishProduct(event) {
-    event.preventDefault();
-
-    const title = document.getElementById("sellTitle").value.trim();
-    const category = document.getElementById("sellCategory").value;
-    const price = parseFloat(document.getElementById("sellPrice").value);
-    const condition = document.getElementById("sellCondition").value;
-    const desc = document.getElementById("sellDesc").value.trim();
-    const seller = document.getElementById("sellSeller").value.trim();
-    const contact = document.getElementById("sellContact").value.trim();
-
-    const categoryImages = {
-        "数码": "📱", "家电": "🏠", "服饰": "👗",
-        "图书": "📚", "运动": "⚽", "母婴": "🍼", "其他": "📦"
-    };
-
-    if (!dataLoaded) {
-        PRODUCTS = await loadProductsAsync();
-        dataLoaded = true;
-    }
+async function publishProduct(e) {
+    e.preventDefault();
+    const title = document.getElementById('sellTitle').value.trim();
+    const category = document.getElementById('sellCategory').value;
+    const price = parseFloat(document.getElementById('sellPrice').value);
+    const condition = document.getElementById('sellCondition').value;
+    const desc = document.getElementById('sellDesc').value.trim();
+    const seller = document.getElementById('sellSeller').value.trim();
+    const contact = document.getElementById('sellContact').value.trim();
+    const imgs = { '数码': '📱', '家电': '🏠', '服饰': '👗', '图书': '📚', '运动': '⚽', '母婴': '🍼', '其他': '📦' };
+    if (!dataLoaded) { PRODUCTS = await loadProductsAsync(); dataLoaded = true; }
     nextId = getNextId(PRODUCTS);
-
-    const newProduct = {
-        id: nextId, title, category, price, condition,
-        desc: desc || "卖家很懒，什么都没有写~",
-        seller, contact: contact || "未提供",
-        image: categoryImages[category] || "📦",
-        date: new Date().toISOString().split("T")[0]
-    };
-
-    PRODUCTS.unshift(newProduct);
+    PRODUCTS.unshift({ id: nextId, title, category, price, condition, desc: desc || '卖家很懒，什么都没有写~', seller, contact: contact || '未提供', image: imgs[category] || '📦', date: new Date().toISOString().split('T')[0] });
     nextId = getNextId(PRODUCTS);
-
     const saved = await saveProductsAsync(PRODUCTS);
-    document.getElementById("sellForm").reset();
+    document.getElementById('sellForm').reset();
     closeSellModal();
-
-    if (saved) {
-        // 刷新数据
-        PRODUCTS = await loadProductsAsync();
-    }
+    if (saved) PRODUCTS = await loadProductsAsync();
     renderProducts(PRODUCTS);
-    showToast(saved ? "发布成功！已同步到云端 ✅" : "发布成功（云端同步失败，已存本地）⚠️");
+    toast(saved ? '发布成功 ✅' : '发布成功（云端同步失败）⚠️');
 }
 
-// ===== 购物车操作 =====
+// ===== 购物车 =====
+function loadCart() { try { const s = localStorage.getItem('xianyu_cart'); if (s) cart = JSON.parse(s); } catch (e) { cart = []; } }
+function saveCart() { localStorage.setItem('xianyu_cart', JSON.stringify(cart)); }
 function addToCart(id) {
-    const product = findProduct(id);
-    if (!product) return;
-
-    const existing = cart.find(item => item.id === id);
-    if (existing) {
-        existing.qty += 1;
-    } else {
-        cart.push({ id: product.id, title: product.title, price: product.price, image: product.image, qty: 1 });
-    }
-
-    saveCart();
-    updateCartUI();
-    showToast("已加入购物车 ✅");
+    const p = PRODUCTS.find(x => x.id === id);
+    if (!p) return;
+    const ex = cart.find(x => x.id === id);
+    if (ex) ex.qty++; else cart.push({ id: p.id, title: p.title, price: p.price, image: p.image, qty: 1 });
+    saveCart(); updateCartDot(); toast('已加入购物车 ✅');
 }
-
-function removeFromCart(id) {
-    cart = cart.filter(item => item.id !== id);
-    saveCart();
-    updateCartUI();
-    renderCartItems();
+function removeFromCart(id) { cart = cart.filter(x => x.id !== id); saveCart(); updateCartDot(); renderCartItems(); }
+function updateCartDot() {
+    const count = cart.reduce((s, x) => s + x.qty, 0);
+    const dot = document.getElementById('cartDot');
+    dot.style.display = count > 0 ? 'block' : 'none';
 }
-
-function updateCartUI() {
-    const count = cart.reduce((sum, item) => sum + item.qty, 0);
-    document.getElementById("cartCount").textContent = count;
-}
-
 function renderCartItems() {
-    const cartItems = document.getElementById("cartItems");
-    const cartEmpty = document.getElementById("cartEmpty");
-    const cartFooter = document.getElementById("cartFooter");
-
-    if (cart.length === 0) {
-        cartItems.innerHTML = "";
-        cartEmpty.style.display = "flex";
-        cartFooter.style.display = "none";
-        return;
-    }
-
-    cartEmpty.style.display = "none";
-    cartFooter.style.display = "block";
-
-    cartItems.innerHTML = cart.map(item => {
-        const product = findProduct(item.id);
-        const gradient = product ? getGradient(product.id) : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
-        return `
-            <div class="cart-item">
-                <div class="cart-item-image" style="background: ${gradient}">${item.image}</div>
-                <div class="cart-item-info">
-                    <div class="cart-item-title">${escapeHtml(item.title)}</div>
-                    <div class="cart-item-price">¥${item.price.toLocaleString()}</div>
-                </div>
-                <button class="cart-item-remove" onclick="removeFromCart(${item.id})">删除</button>
-            </div>
-        `;
-    }).join("");
-
-    const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-    document.getElementById("cartTotal").textContent = "¥" + total.toLocaleString();
+    const items = document.getElementById('cartItems');
+    const empty = document.getElementById('cartEmpty');
+    const footer = document.getElementById('cartFooter');
+    if (cart.length === 0) { items.innerHTML = ''; empty.style.display = 'flex'; footer.style.display = 'none'; return; }
+    empty.style.display = 'none'; footer.style.display = 'block';
+    items.innerHTML = cart.map(item => {
+        const p = PRODUCTS.find(x => x.id === item.id);
+        return '<div class="cart-item"><div class="cart-item-image" style="background:' + (p ? getGradient(p.id) : '#eee') + '">' + item.image + '</div><div class="cart-item-info"><div class="cart-item-title">' + esc(item.title) + '</div><div class="cart-item-price">¥' + item.price.toLocaleString() + '</div></div><button class="cart-item-remove" onclick="removeFromCart(' + item.id + ')">删除</button></div>';
+    }).join('');
+    document.getElementById('cartTotal').textContent = '¥' + cart.reduce((s, x) => s + x.price * x.qty, 0).toLocaleString();
 }
-
 function toggleCart() {
-    const panel = document.getElementById("cartPanel");
-    const overlay = document.getElementById("cartOverlay");
-
-    if (panel.classList.contains("active")) {
-        panel.classList.remove("active");
-        overlay.classList.remove("active");
-        document.body.style.overflow = "";
-    } else {
-        renderCartItems();
-        panel.classList.add("active");
-        overlay.classList.add("active");
-        document.body.style.overflow = "hidden";
-    }
+    const panel = document.getElementById('cartPanel');
+    const overlay = document.getElementById('cartOverlay');
+    if (panel.classList.contains('active')) { panel.classList.remove('active'); overlay.classList.remove('active'); document.body.style.overflow = ''; }
+    else { renderCartItems(); panel.classList.add('active'); overlay.classList.add('active'); document.body.style.overflow = 'hidden'; }
 }
-
 function checkout() {
     if (cart.length === 0) return;
-    const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-    const count = cart.reduce((sum, item) => sum + item.qty, 0);
-
-    if (confirm("确认结算 " + count + " 件商品，总计 ¥" + total.toLocaleString() + "？\n\n（此为演示功能，不会实际扣款）")) {
-        cart = [];
-        saveCart();
-        updateCartUI();
-        renderCartItems();
-        toggleCart();
-        showToast("结算成功！感谢购物 🎉");
-    }
+    const total = cart.reduce((s, x) => s + x.price * x.qty, 0);
+    if (confirm('确认结算 ' + cart.reduce((s, x) => s + x.qty, 0) + ' 件商品，总计 ¥' + total.toLocaleString() + '？\n（演示功能，不实际扣款）')) { cart = []; saveCart(); updateCartDot(); renderCartItems(); toggleCart(); toast('结算成功 🎉'); }
 }
 
-// ===== Toast 提示 =====
-function showToast(message) {
-    const existing = document.querySelector(".toast");
-    if (existing) existing.remove();
+// ===== 我的页面 =====
+function updateProfile() {
+    document.getElementById('myPublishCount').textContent = PRODUCTS.length;
+    document.getElementById('myBuyCount').textContent = Object.keys(paidProducts).length;
+}
 
-    const toast = document.createElement("div");
-    toast.className = "toast";
-    toast.textContent = message;
-    toast.style.cssText = `
-        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-        background: #2d3436; color: white; padding: 12px 24px;
-        border-radius: 24px; font-size: 14px; font-weight: 600; z-index: 9999;
-        animation: toastIn 0.3s ease, toastOut 0.3s ease 2s forwards;
-        white-space: nowrap;
-    `;
-
-    if (!document.getElementById("toastStyles")) {
-        const style = document.createElement("style");
-        style.id = "toastStyles";
-        style.textContent = `
-            @keyframes toastIn {
-                from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-                to   { opacity: 1; transform: translateX(-50%) translateY(0); }
-            }
-            @keyframes toastOut {
-                from { opacity: 1; transform: translateX(-50%) translateY(0); }
-                to   { opacity: 0; transform: translateX(-50%) translateY(-20px); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2500);
+// ===== Toast =====
+function toast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.8);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:9999;animation:fadeIn .3s ease,fadeOut .3s ease 2s forwards;pointer-events:none';
+    if (!document.getElementById('ts')) { const s = document.createElement('style'); s.id = 'ts'; s.textContent = '@keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}@keyframes fadeOut{from{opacity:1;transform:translateX(-50%) translateY(0)}to{opacity:0;transform:translateX(-50%) translateY(-10px)}}'; document.head.appendChild(s); }
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 2400);
 }
