@@ -21,5 +21,13 @@ function getNextId(products) {
     return Math.max(...products.map(p => p.id)) + 1;
 }
 
+// 版本控制：强制清空旧数据
+const DATA_VERSION = 2;
+const versionKey = 'xianyu_data_version';
+if (localStorage.getItem(versionKey) !== String(DATA_VERSION)) {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.setItem(versionKey, String(DATA_VERSION));
+}
+
 let PRODUCTS = loadProducts();
 let nextId = getNextId(PRODUCTS);
