@@ -2,107 +2,136 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小钱二手超市 - 二手交易平台</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>小钱二手超市</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header class="header">
-        <div class="header-inner">
-            <div class="logo" onclick="location.reload()">
-                <span class="logo-icon">🔄</span>
-                <span class="logo-text">小钱二手超市</span>
+    <!-- 顶部导航 -->
+    <header class="top-bar">
+        <div class="top-bar-inner">
+            <span class="city-picker" onclick="alert('当前城市：全国')">📍 全国</span>
+            <div class="search-box" onclick="focusSearch()">
+                🔍 <span class="search-placeholder">搜一搜你想要的宝贝</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="搜一搜你想要的宝贝" oninput="filterProducts()">
             </div>
-            <div class="search-bar">
-                <input type="text" id="searchInput" placeholder="搜索你想要的宝贝..." oninput="filterProducts()">
-                <button class="search-btn" onclick="filterProducts()">🔍</button>
-            </div>
-            <div class="header-actions">
-                <button class="btn-sell" onclick="openSellModal()">+ 发布闲置</button>
-                <button class="btn-cart" onclick="toggleCart()">
-                    🛒 <span id="cartCount" class="cart-badge">0</span>
-                </button>
-            </div>
+            <span class="top-icons">
+                <span onclick="toggleCart()">🛒<em id="cartDot" class="red-dot" style="display:none"></em></span>
+            </span>
         </div>
     </header>
-    <nav class="category-nav">
-        <div class="category-inner">
-            <button class="category-btn active" data-category="all" onclick="setCategory('all', this)">全部</button>
-            <button class="category-btn" data-category="数码" onclick="setCategory('数码', this)">📱 数码</button>
-            <button class="category-btn" data-category="家电" onclick="setCategory('家电', this)">🏠 家电</button>
-            <button class="category-btn" data-category="服饰" onclick="setCategory('服饰', this)">👗 服饰</button>
-            <button class="category-btn" data-category="图书" onclick="setCategory('图书', this)">📚 图书</button>
-            <button class="category-btn" data-category="运动" onclick="setCategory('运动', this)">⚽ 运动</button>
-            <button class="category-btn" data-category="母婴" onclick="setCategory('母婴', this)">🍼 母婴</button>
-            <button class="category-btn" data-category="其他" onclick="setCategory('其他', this)">📦 其他</button>
+
+    <!-- 内容区 -->
+    <div class="tab-content" id="tabHome">
+        <!-- 分类图标 -->
+        <div class="category-icons">
+            <div class="cat-item" onclick="setCategory('all',this)"><div class="cat-icon">🔥</div><span>全部</span></div>
+            <div class="cat-item" onclick="setCategory('数码',this)"><div class="cat-icon">📱</div><span>手机</span></div>
+            <div class="cat-item" onclick="setCategory('数码',this)"><div class="cat-icon">💻</div><span>电脑</span></div>
+            <div class="cat-item" onclick="setCategory('服饰',this)"><div class="cat-icon">👗</div><span>女装</span></div>
+            <div class="cat-item" onclick="setCategory('母婴',this)"><div class="cat-icon">🍼</div><span>母婴</span></div>
+            <div class="cat-item" onclick="setCategory('图书',this)"><div class="cat-icon">📚</div><span>图书</span></div>
+            <div class="cat-item" onclick="setCategory('家电',this)"><div class="cat-icon">🏠</div><span>家电</span></div>
+            <div class="cat-item" onclick="setCategory('运动',this)"><div class="cat-icon">⚽</div><span>运动</span></div>
+            <div class="cat-item" onclick="setCategory('其他',this)"><div class="cat-icon">📦</div><span>其他</span></div>
         </div>
-    </nav>
-    <div class="filter-bar">
-        <div class="filter-inner">
-            <select id="sortSelect" onchange="filterProducts()">
-                <option value="default">默认排序</option>
-                <option value="price-asc">价格从低到高</option>
-                <option value="price-desc">价格从高到低</option>
-                <option value="newest">最新发布</option>
-            </select>
-            <select id="conditionSelect" onchange="filterProducts()">
+
+        <!-- 筛选栏 -->
+        <div class="filter-row">
+            <span class="filter-tag active" data-sort="default" onclick="setSort('default',this)">综合</span>
+            <span class="filter-tag" data-sort="price-asc" onclick="setSort('price-asc',this)">价格↑</span>
+            <span class="filter-tag" data-sort="price-desc" onclick="setSort('price-desc',this)">价格↓</span>
+            <span class="filter-tag" data-sort="newest" onclick="setSort('newest',this)">最新</span>
+            <select id="conditionSelect" onchange="filterProducts()" class="condition-select">
                 <option value="all">成色不限</option>
                 <option value="全新">全新</option>
                 <option value="九成新">九成新</option>
                 <option value="八成新">八成新</option>
-                <option value="七成新及以下">七成新及以下</option>
             </select>
-            <div class="price-filter">
-                <input type="number" id="priceMin" placeholder="最低价" onchange="filterProducts()">
-                <span>—</span>
-                <input type="number" id="priceMax" placeholder="最高价" onchange="filterProducts()">
-            </div>
-            <span id="resultCount" class="result-count"></span>
         </div>
-    </div>
-    <main class="main-content">
-        <div id="productGrid" class="product-grid"></div>
+
+        <div class="section-title">猜你喜欢</div>
+        <div class="waterfall" id="productGrid"></div>
         <div id="emptyState" class="empty-state" style="display:none;">
-            <div class="empty-icon">📭</div>
-            <p>没有找到相关商品</p>
-            <p class="empty-hint">试试调整筛选条件或搜索关键词</p>
-        </div>
-    </main>
-    <div id="detailModal" class="modal" onclick="if(event.target===this)closeDetail()">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeDetail()">✕</button>
-            <div class="detail-body" id="detailBody"></div>
+            <div class="empty-icon">📭</div><p>没有找到相关宝贝</p><p class="empty-hint">换个关键词试试吧</p>
         </div>
     </div>
+
+    <div class="tab-content" id="tabNearby" style="display:none;">
+        <div style="padding:40px;text-align:center;color:#999;">附近功能开发中...</div>
+    </div>
+    <div class="tab-content" id="tabMessages" style="display:none;">
+        <div style="padding:40px;text-align:center;color:#999;">消息功能开发中...</div>
+    </div>
+    <div class="tab-content" id="tabProfile" style="display:none;">
+        <div class="profile-page">
+            <div class="profile-avatar">👤</div>
+            <div class="profile-name">用户</div>
+            <div class="profile-stats">
+                <div><b id="myPublishCount">0</b><span>发布</span></div>
+                <div><b id="myBuyCount">0</b><span>已购</span></div>
+            </div>
+            <div class="profile-menu">
+                <div class="menu-item" onclick="location.href='admin.html'">⚙️ 管理后台</div>
+                <div class="menu-item" onclick="localStorage.clear();sessionStorage.clear();location.reload()">🗑️ 清除缓存</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 底部导航 -->
+    <nav class="bottom-nav">
+        <div class="nav-item active" data-tab="tabHome" onclick="switchTab('tabHome',this)"><span class="nav-icon">🏠</span><span class="nav-label">首页</span></div>
+        <div class="nav-item" data-tab="tabNearby" onclick="switchTab('tabNearby',this)"><span class="nav-icon">📍</span><span class="nav-label">附近</span></div>
+        <div class="nav-item nav-publish" onclick="openSellModal()"><span class="nav-icon">＋</span></div>
+        <div class="nav-item" data-tab="tabMessages" onclick="switchTab('tabMessages',this)"><span class="nav-icon">💬</span><span class="nav-label">消息</span></div>
+        <div class="nav-item" data-tab="tabProfile" onclick="switchTab('tabProfile',this)"><span class="nav-icon">👤</span><span class="nav-label">我的</span></div>
+    </nav>
+
+    <!-- 商品详情弹窗 -->
+    <div id="detailModal" class="modal" onclick="if(event.target===this)closeDetail()">
+        <div class="modal-content detail-sheet">
+            <button class="modal-close" onclick="closeDetail()">✕</button>
+            <div class="detail-image" id="detailImage"></div>
+            <div class="detail-price" id="detailPrice"></div>
+            <div class="detail-title" id="detailTitle"></div>
+            <div class="detail-tags" id="detailTags"></div>
+            <div class="detail-desc" id="detailDesc"></div>
+            <div class="seller-card">
+                <div class="seller-avatar">👤</div>
+                <div class="seller-info"><div class="seller-name" id="detailSeller"></div><div class="seller-contact" id="detailContact"></div></div>
+            </div>
+            <div class="detail-btns">
+                <button class="btn-fav">❤️ 收藏</button>
+                <button class="btn-buy" onclick="contactSeller(currentDetailId)">💬 我想要</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 发布弹窗 -->
     <div id="sellModal" class="modal" onclick="if(event.target===this)closeSellModal()">
-        <div class="modal-content sell-modal">
+        <div class="modal-content sell-sheet">
             <button class="modal-close" onclick="closeSellModal()">✕</button>
-            <h2>发布闲置物品</h2>
+            <h2>发布闲置</h2>
             <form id="sellForm" onsubmit="publishProduct(event)">
-                <div class="form-group"><label>商品名称 *</label><input type="text" id="sellTitle" required placeholder="请输入商品名称"></div>
-                <div class="form-group"><label>分类 *</label><select id="sellCategory" required><option value="">请选择分类</option><option value="数码">数码</option><option value="家电">家电</option><option value="服饰">服饰</option><option value="图书">图书</option><option value="运动">运动</option><option value="母婴">母婴</option><option value="其他">其他</option></select></div>
-                <div class="form-group"><label>价格（元）*</label><input type="number" id="sellPrice" required placeholder="请输入价格" min="0" step="0.01"></div>
-                <div class="form-group"><label>成色 *</label><select id="sellCondition" required><option value="">请选择成色</option><option value="全新">全新</option><option value="九成新">九成新</option><option value="八成新">八成新</option><option value="七成新及以下">七成新及以下</option></select></div>
-                <div class="form-group"><label>商品描述</label><textarea id="sellDesc" rows="3" placeholder="描述一下你的闲置物品吧..."></textarea></div>
+                <div class="form-group"><label>商品名称 *</label><input type="text" id="sellTitle" required placeholder="宝贝标题"></div>
+                <div class="form-group"><label>分类 *</label><select id="sellCategory" required><option value="">请选择</option><option value="数码">数码</option><option value="家电">家电</option><option value="服饰">服饰</option><option value="图书">图书</option><option value="运动">运动</option><option value="母婴">母婴</option><option value="其他">其他</option></select></div>
+                <div class="form-group"><label>价格（元）*</label><input type="number" id="sellPrice" required placeholder="0" min="0" step="0.01"></div>
+                <div class="form-group"><label>成色 *</label><select id="sellCondition" required><option value="">请选择</option><option value="全新">全新</option><option value="九成新">九成新</option><option value="八成新">八成新</option><option value="七成新及以下">七成新及以下</option></select></div>
+                <div class="form-group"><label>商品描述</label><textarea id="sellDesc" rows="3" placeholder="描述一下你的宝贝..."></textarea></div>
                 <div class="form-group"><label>卖家昵称 *</label><input type="text" id="sellSeller" required placeholder="你的昵称"></div>
-                <div class="form-group"><label>联系方式</label><input type="text" id="sellContact" placeholder="手机号/微信号（可选）"></div>
-                <button type="submit" class="btn-publish">发布商品</button>
+                <div class="form-group"><label>联系方式</label><input type="text" id="sellContact" placeholder="手机号/微信号"></div>
+                <button type="submit" class="btn-publish">发布</button>
             </form>
         </div>
     </div>
 
     <!-- 付款弹窗 -->
     <div id="payModal" class="modal" onclick="if(event.target===this)closePayModal()">
-        <div class="modal-content pay-modal">
+        <div class="modal-content pay-sheet">
             <button class="modal-close" onclick="closePayModal()">✕</button>
             <div id="payStep1">
-                <div class="pay-icon">💳</div>
-                <h2>确认付款</h2>
-                <div class="pay-product-info">
-                    <div class="pay-product-image" id="payImage"></div>
-                    <div class="pay-product-title" id="payTitle"></div>
-                    <div class="pay-product-price" id="payPrice"></div>
-                </div>
+                <div class="pay-icon">💳</div><h2>确认付款</h2>
+                <div id="payProductInfo"></div>
                 <div class="pay-methods">
                     <label class="pay-method active"><input type="radio" name="payMethod" value="wechat" checked> 💚 微信支付</label>
                     <label class="pay-method"><input type="radio" name="payMethod" value="alipay"> 💙 支付宝</label>
@@ -111,31 +140,26 @@
                 <p class="pay-hint">🔒 支付安全由平台保障</p>
             </div>
             <div id="payStep2" style="display:none;">
-                <div class="pay-success-icon">✅</div>
-                <h2 class="pay-success-title">支付成功！</h2>
-                <div class="pay-contact-reveal">
-                    <div class="contact-label">👤 卖家</div>
-                    <div class="contact-value" id="paySeller"></div>
-                    <div class="contact-label">📞 联系方式</div>
-                    <div class="contact-value contact-highlight" id="payContact"></div>
-                </div>
-                <p class="pay-contact-hint">请主动联系卖家完成线下交易</p>
+                <div class="pay-success-icon">✅</div><h2 class="pay-success-title">支付成功</h2>
+                <div class="pay-contact-reveal"><div class="contact-label">卖家</div><div class="contact-value" id="paySeller"></div><div class="contact-label">联系方式</div><div class="contact-value contact-highlight" id="payContact"></div></div>
+                <p class="pay-contact-hint">请主动联系卖家完成交易</p>
                 <button class="btn-pay-done" onclick="closePayModal()">知道了</button>
             </div>
         </div>
     </div>
 
+    <!-- 购物车侧边 -->
     <div id="cartOverlay" class="cart-overlay" onclick="toggleCart()"></div>
     <div id="cartPanel" class="cart-panel">
         <div class="cart-header"><h3>🛒 我的购物车</h3><button onclick="toggleCart()">✕</button></div>
         <div id="cartItems" class="cart-items"></div>
-        <div id="cartEmpty" class="cart-empty"><p>🛍️</p><p>购物车空空如也</p><p class="cart-empty-hint">快去逛逛吧~</p></div>
+        <div id="cartEmpty" class="cart-empty"><p>🛍️</p><p>购物车空空如也</p></div>
         <div class="cart-footer" id="cartFooter" style="display:none;">
-            <div class="cart-total"><span>合计：</span><span id="cartTotal" class="cart-total-price">¥0.00</span></div>
+            <div class="cart-total"><span>合计：</span><span id="cartTotal">¥0.00</span></div>
             <button class="btn-checkout" onclick="checkout()">立即结算</button>
         </div>
     </div>
-    <footer class="footer"><p>© 2026 小钱二手超市 - 让闲置流转起来 &emsp;|&emsp; <a href="admin.html">⚙️ 管理后台</a></p></footer>
+
     <script src="data.js"></script>
     <script src="script.js"></script>
 </body>
