@@ -1,14 +1,13 @@
-﻿// ===== 全局状态 =====
+// ===== 全局状态 =====
 let currentCategory = "all";
 let cart = [];
-let paidProducts = {}; // 已付款商品ID集合
+let paidProducts = {};
 
 // ===== 初始化 =====
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
+    await initData();
     loadCart();
     loadPaidProducts();
-    PRODUCTS = loadProducts();
-    nextId = getNextId(PRODUCTS);
     renderProducts(PRODUCTS);
     updateCartUI();
 });
@@ -18,9 +17,7 @@ function loadCart() {
     try {
         const saved = localStorage.getItem("xianyu_cart");
         if (saved) cart = JSON.parse(saved);
-    } catch (e) {
-        cart = [];
-    }
+    } catch (e) { cart = []; }
 }
 
 function saveCart() {
@@ -33,7 +30,7 @@ function renderProducts(products) {
     const empty = document.getElementById("emptyState");
     const resultCount = document.getElementById("resultCount");
 
-    if (products.length === 0) {
+    if (!products || products.length === 0) {
         grid.innerHTML = "";
         empty.style.display = "block";
         resultCount.textContent = "0 件商品";
@@ -84,14 +81,20 @@ function escapeHtml(str) {
 }
 
 // ===== 筛选与搜索 =====
-function filterProducts() {
+async function filterProducts() {
     const searchTerm = document.getElementById("searchInput").value.toLowerCase().trim();
     const sort = document.getElementById("sortSelect").value;
     const condition = document.getElementById("conditionSelect").value;
     const priceMin = parseFloat(document.getElementById("priceMin").value) || 0;
     const priceMax = parseFloat(document.getElementById("priceMax").value) || Infinity;
 
-    let filtered = loadProducts().filter(p => {
+    if (!dataLoaded) {
+        PRODUCTS = await loadProductsAsync();
+        nextId = getNextId(PRODUCTS);
+        dataLoaded = true;
+    }
+
+    let filtered = PRODUCTS.filter(p => {
         if (currentCategory !== "all" && p.category !== currentCategory) return false;
         if (searchTerm && !p.title.toLowerCase().includes(searchTerm) && !p.desc.toLowerCase().includes(searchTerm)) return false;
         if (condition !== "all" && p.condition !== condition) return false;
@@ -118,7 +121,7 @@ function setCategory(category, btn) {
 
 // ===== 商品详情 =====
 function findProduct(id) {
-    return loadProducts().find(p => p.id === id);
+    return PRODUCTS.find(p => p.id === id);
 }
 
 function openDetail(id) {
@@ -155,13 +158,11 @@ function contactSeller(id) {
     const product = findProduct(id);
     if (!product) return;
 
-    // 已付款直接显示
     if (paidProducts[id]) {
         alert("卖家: " + product.seller + "\n联系方式: " + product.contact);
         return;
     }
 
-    // 打开付款弹窗
     currentPayProduct = product;
     document.getElementById("payImage").textContent = product.image;
     document.getElementById("payImage").style.background = getGradient(product.id);
@@ -189,15 +190,12 @@ function savePaidProducts() {
 
 function confirmPayment() {
     if (!currentPayProduct) return;
-    const product = currentPayProduct;
-
-    paidProducts[product.id] = true;
+    paidProducts[currentPayProduct.id] = true;
     savePaidProducts();
-
     document.getElementById("payStep1").style.display = "none";
     document.getElementById("payStep2").style.display = "block";
-    document.getElementById("paySeller").textContent = product.seller;
-    document.getElementById("payContact").textContent = product.contact;
+    document.getElementById("paySeller").textContent = currentPayProduct.seller;
+    document.getElementById("payContact").textContent = currentPayProduct.contact;
 }
 
 function closePayModal() {
@@ -217,7 +215,7 @@ function closeSellModal() {
     document.body.style.overflow = "";
 }
 
-function publishProduct(event) {
+async function publishProduct(event) {
     event.preventDefault();
 
     const title = document.getElementById("sellTitle").value.trim();
@@ -233,31 +231,33 @@ function publishProduct(event) {
         "图书": "📚", "运动": "⚽", "母婴": "🍼", "其他": "📦"
     };
 
-    let allProducts = loadProducts();
-    nextId = getNextId(allProducts);
+    if (!dataLoaded) {
+        PRODUCTS = await loadProductsAsync();
+        dataLoaded = true;
+    }
+    nextId = getNextId(PRODUCTS);
 
     const newProduct = {
-        id: nextId,
-        title,
-        category,
-        price,
-        condition,
+        id: nextId, title, category, price, condition,
         desc: desc || "卖家很懒，什么都没有写~",
-        seller,
-        contact: contact || "未提供",
+        seller, contact: contact || "未提供",
         image: categoryImages[category] || "📦",
         date: new Date().toISOString().split("T")[0]
     };
 
-    allProducts.unshift(newProduct);
-    saveProducts(allProducts);
-    PRODUCTS = allProducts;
-    nextId = getNextId(allProducts);
+    PRODUCTS.unshift(newProduct);
+    nextId = getNextId(PRODUCTS);
 
+    const saved = await saveProductsAsync(PRODUCTS);
     document.getElementById("sellForm").reset();
     closeSellModal();
-    filterProducts();
-    showToast("商品发布成功！🎉");
+
+    if (saved) {
+        // 刷新数据
+        PRODUCTS = await loadProductsAsync();
+    }
+    renderProducts(PRODUCTS);
+    showToast(saved ? "发布成功！已同步到云端 ✅" : "发布成功（云端同步失败，已存本地）⚠️");
 }
 
 // ===== 购物车操作 =====
@@ -269,13 +269,7 @@ function addToCart(id) {
     if (existing) {
         existing.qty += 1;
     } else {
-        cart.push({
-            id: product.id,
-            title: product.title,
-            price: product.price,
-            image: product.image,
-            qty: 1
-        });
+        cart.push({ id: product.id, title: product.title, price: product.price, image: product.image, qty: 1 });
     }
 
     saveCart();
