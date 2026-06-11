@@ -1,11 +1,12 @@
 ﻿// ===== 全局状态 =====
 let currentCategory = "all";
 let cart = [];
-let nextId = PRODUCTS.length + 1;
 
 // ===== 初始化 =====
 document.addEventListener("DOMContentLoaded", () => {
     loadCart();
+    PRODUCTS = loadProducts();
+    nextId = getNextId(PRODUCTS);
     renderProducts(PRODUCTS);
     updateCartUI();
 });
@@ -38,7 +39,7 @@ function renderProducts(products) {
     }
 
     empty.style.display = "none";
-    resultCount.textContent = `共 ${products.length} 件商品`;
+    resultCount.textContent = "共 " + products.length + " 件商品";
 
     grid.innerHTML = products.map(p => `
         <div class="product-card" onclick="openDetail(${p.id})">
@@ -88,32 +89,19 @@ function filterProducts() {
     const priceMin = parseFloat(document.getElementById("priceMin").value) || 0;
     const priceMax = parseFloat(document.getElementById("priceMax").value) || Infinity;
 
-    let filtered = PRODUCTS.filter(p => {
-        // 分类筛选
+    let filtered = loadProducts().filter(p => {
         if (currentCategory !== "all" && p.category !== currentCategory) return false;
-        // 搜索
         if (searchTerm && !p.title.toLowerCase().includes(searchTerm) && !p.desc.toLowerCase().includes(searchTerm)) return false;
-        // 成色
         if (condition !== "all" && p.condition !== condition) return false;
-        // 价格
         if (p.price < priceMin || p.price > priceMax) return false;
         return true;
     });
 
-    // 排序
     switch (sort) {
-        case "price-asc":
-            filtered.sort((a, b) => a.price - b.price);
-            break;
-        case "price-desc":
-            filtered.sort((a, b) => b.price - a.price);
-            break;
-        case "newest":
-            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
-            break;
-        default:
-            // 默认按日期倒序
-            filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
+        case "price-asc": filtered.sort((a, b) => a.price - b.price); break;
+        case "price-desc": filtered.sort((a, b) => b.price - a.price); break;
+        case "newest": filtered.sort((a, b) => new Date(b.date) - new Date(a.date)); break;
+        default: filtered.sort((a, b) => new Date(b.date) - new Date(a.date));
     }
 
     renderProducts(filtered);
@@ -127,8 +115,12 @@ function setCategory(category, btn) {
 }
 
 // ===== 商品详情 =====
+function findProduct(id) {
+    return loadProducts().find(p => p.id === id);
+}
+
 function openDetail(id) {
-    const product = PRODUCTS.find(p => p.id === id);
+    const product = findProduct(id);
     if (!product) return;
 
     const body = document.getElementById("detailBody");
@@ -158,9 +150,9 @@ function closeDetail() {
 }
 
 function contactSeller(id) {
-    const product = PRODUCTS.find(p => p.id === id);
+    const product = findProduct(id);
     if (!product) return;
-    alert(`联系卖家: ${product.seller}\n联系方式: ${product.contact}`);
+    alert("联系卖家: " + product.seller + "\n联系方式: " + product.contact);
 }
 
 // ===== 发布商品 =====
@@ -190,8 +182,11 @@ function publishProduct(event) {
         "图书": "📚", "运动": "⚽", "母婴": "🍼", "其他": "📦"
     };
 
+    let allProducts = loadProducts();
+    nextId = getNextId(allProducts);
+
     const newProduct = {
-        id: nextId++,
+        id: nextId,
         title,
         category,
         price,
@@ -203,22 +198,20 @@ function publishProduct(event) {
         date: new Date().toISOString().split("T")[0]
     };
 
-    PRODUCTS.unshift(newProduct);
+    allProducts.unshift(newProduct);
+    saveProducts(allProducts);
+    PRODUCTS = allProducts;
+    nextId = getNextId(allProducts);
 
-    // 重置表单
     document.getElementById("sellForm").reset();
     closeSellModal();
-
-    // 刷新列表
     filterProducts();
-
-    // 提示
     showToast("商品发布成功！🎉");
 }
 
 // ===== 购物车操作 =====
 function addToCart(id) {
-    const product = PRODUCTS.find(p => p.id === id);
+    const product = findProduct(id);
     if (!product) return;
 
     const existing = cart.find(item => item.id === id);
@@ -267,7 +260,7 @@ function renderCartItems() {
     cartFooter.style.display = "block";
 
     cartItems.innerHTML = cart.map(item => {
-        const product = PRODUCTS.find(p => p.id === item.id);
+        const product = findProduct(item.id);
         const gradient = product ? getGradient(product.id) : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)";
         return `
             <div class="cart-item">
@@ -282,7 +275,7 @@ function renderCartItems() {
     }).join("");
 
     const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-    document.getElementById("cartTotal").textContent = `¥${total.toLocaleString()}`;
+    document.getElementById("cartTotal").textContent = "¥" + total.toLocaleString();
 }
 
 function toggleCart() {
@@ -306,7 +299,7 @@ function checkout() {
     const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
     const count = cart.reduce((sum, item) => sum + item.qty, 0);
 
-    if (confirm(`确认结算 ${count} 件商品，总计 ¥${total.toLocaleString()}？\n\n（此为演示功能，不会实际扣款）`)) {
+    if (confirm("确认结算 " + count + " 件商品，总计 ¥" + total.toLocaleString() + "？\n\n（此为演示功能，不会实际扣款）")) {
         cart = [];
         saveCart();
         updateCartUI();
@@ -318,7 +311,6 @@ function checkout() {
 
 // ===== Toast 提示 =====
 function showToast(message) {
-    // 移除现有 toast
     const existing = document.querySelector(".toast");
     if (existing) existing.remove();
 
@@ -326,22 +318,13 @@ function showToast(message) {
     toast.className = "toast";
     toast.textContent = message;
     toast.style.cssText = `
-        position: fixed;
-        bottom: 30px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #2d3436;
-        color: white;
-        padding: 12px 24px;
-        border-radius: 24px;
-        font-size: 14px;
-        font-weight: 600;
-        z-index: 9999;
+        position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+        background: #2d3436; color: white; padding: 12px 24px;
+        border-radius: 24px; font-size: 14px; font-weight: 600; z-index: 9999;
         animation: toastIn 0.3s ease, toastOut 0.3s ease 2s forwards;
         white-space: nowrap;
     `;
 
-    // 添加动画样式（如果还没有）
     if (!document.getElementById("toastStyles")) {
         const style = document.createElement("style");
         style.id = "toastStyles";

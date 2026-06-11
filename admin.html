@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>管理后台 - 小钱二手超市</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 登录界面 -->
+    <div id="loginScreen" class="login-screen">
+        <div class="login-card">
+            <div class="login-icon">🔐</div>
+            <h2>管理员登录</h2>
+            <input type="password" id="adminPassword" placeholder="请输入管理密码" onkeydown="if(event.key==='Enter')adminLogin()">
+            <button onclick="adminLogin()">登 录</button>
+            <p id="loginError" class="login-error"></p>
+            <a href="index.html" class="back-link">← 返回商城</a>
+        </div>
+    </div>
+
+    <!-- 管理界面 -->
+    <div id="adminPanel" class="admin-panel" style="display:none;">
+        <header class="admin-header">
+            <div class="admin-header-inner">
+                <h1>⚙️ 小钱二手超市 · 管理后台</h1>
+                <div class="admin-header-actions">
+                    <a href="index.html" class="btn-back">🏠 商城首页</a>
+                    <button onclick="adminLogout()" class="btn-logout">退出登录</button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 统计卡片 -->
+        <div class="admin-stats">
+            <div class="stat-card">
+                <div class="stat-icon">📦</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">商品总数</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statAvgPrice">¥0</div>
+                    <div class="stat-label">均价</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📂</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statCategories">0</div>
+                    <div class="stat-label">分类数</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🆕</div>
+                <div class="stat-info">
+                    <div class="stat-value" id="statRecent">0</div>
+                    <div class="stat-label">本月新增</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 操作栏 -->
+        <div class="admin-toolbar">
+            <input type="text" id="adminSearch" placeholder="搜索商品..." oninput="renderAdminTable()" class="admin-search">
+            <select id="adminCategoryFilter" onchange="renderAdminTable()" class="admin-select">
+                <option value="all">全部分类</option>
+                <option value="数码">数码</option>
+                <option value="家电">家电</option>
+                <option value="服饰">服饰</option>
+                <option value="图书">图书</option>
+                <option value="运动">运动</option>
+                <option value="母婴">母婴</option>
+                <option value="其他">其他</option>
+            </select>
+            <button class="btn-add-product" onclick="openAdminAdd()">+ 添加商品</button>
+        </div>
+
+        <!-- 商品表格 -->
+        <div class="admin-table-wrap">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>图片</th>
+                        <th>标题</th>
+                        <th>分类</th>
+                        <th>价格</th>
+                        <th>成色</th>
+                        <th>卖家</th>
+                        <th>日期</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="adminTableBody"></tbody>
+            </table>
+            <div id="adminEmpty" class="admin-empty" style="display:none;">暂无商品数据</div>
+        </div>
+    </div>
+
+    <!-- 添加/编辑弹窗 -->
+    <div id="adminModal" class="modal" onclick="if(event.target===this)closeAdminModal()">
+        <div class="modal-content sell-modal">
+            <button class="modal-close" onclick="closeAdminModal()">✕</button>
+            <h2 id="adminModalTitle">添加商品</h2>
+            <form id="adminForm" onsubmit="saveAdminProduct(event)">
+                <input type="hidden" id="adminEditId">
+                <div class="form-group">
+                    <label>商品名称 *</label>
+                    <input type="text" id="adminTitle" required placeholder="请输入商品名称">
+                </div>
+                <div class="form-group">
+                    <label>分类 *</label>
+                    <select id="adminCategory" required>
+                        <option value="">请选择分类</option>
+                        <option value="数码">数码</option>
+                        <option value="家电">家电</option>
+                        <option value="服饰">服饰</option>
+                        <option value="图书">图书</option>
+                        <option value="运动">运动</option>
+                        <option value="母婴">母婴</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>价格（元）*</label>
+                    <input type="number" id="adminPrice" required placeholder="请输入价格" min="0" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>成色 *</label>
+                    <select id="adminCondition" required>
+                        <option value="">请选择成色</option>
+                        <option value="全新">全新</option>
+                        <option value="九成新">九成新</option>
+                        <option value="八成新">八成新</option>
+                        <option value="七成新及以下">七成新及以下</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>图标 *</label>
+                    <input type="text" id="adminImage" required placeholder="输入一个 emoji，如 📱" maxlength="2">
+                </div>
+                <div class="form-group">
+                    <label>商品描述</label>
+                    <textarea id="adminDesc" rows="3" placeholder="描述一下商品..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>卖家昵称 *</label>
+                    <input type="text" id="adminSeller" required placeholder="卖家昵称">
+                </div>
+                <div class="form-group">
+                    <label>联系方式</label>
+                    <input type="text" id="adminContact" placeholder="手机号/微信号（可选）">
+                </div>
+                <button type="submit" class="btn-publish">保存</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
