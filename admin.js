@@ -1,5 +1,5 @@
 ﻿// ===== 管理后台逻辑 =====
-const ADMIN_PASSWORD = 'admin123';
+const ADMIN_PASSWORD = 'zwgkdj666';
 let adminLoggedIn = false;
 
 // 检查登录状态
